@@ -45,26 +45,9 @@ button:active{transform:scale(.97);}
 }
 .known{color:var(--accent);font-weight:700;}
 #iosInput{
-  position:fixed;
-  bottom:80px;left:50%;transform:translateX(-50%);
-  width:60px;height:60px;
-  font-size:1.8rem;font-weight:700;
-  padding:0;
-  border:2px solid var(--accent);
-  border-radius:8px;
-  background:#eaf1ff;
-  text-align:center;
-  text-transform:uppercase;
-  display:none;
-  z-index:100;
-}
-#iosInput.visible{
-  display:block;
-}
-@supports (padding: max(0px)) {
-  #iosInput.visible {
-    bottom: calc(80px + max(0px, env(safe-area-inset-bottom)));
-  }
+  position:relative;
+  width:1px;height:1px;opacity:0;
+  border:none;background:transparent;
 }
 </style>
 </head>
@@ -101,23 +84,29 @@ function setActive(i){
 }
 setActive(0);
 
-const isiOS=/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.maxTouchPoints > 4 && /Mac/.test(navigator.userAgent));
+const isiOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
 const iosInput=document.getElementById("iosInput");
 
 // Funktio näppäimistön avaamiseen iOS PWA:ssa
 function focusKeyboardiOS(){
-  iosInput.classList.add("visible");
-  iosInput.focus();
+  const tempInput=document.createElement("input");
+  tempInput.style.position="absolute";
+  tempInput.style.opacity="0";
+  tempInput.style.width="0";
+  tempInput.style.height="0";
+  document.body.appendChild(tempInput);
+  tempInput.focus();
+  setTimeout(()=>{
+    iosInput.focus();
+    document.body.removeChild(tempInput);
+  },100);
 }
 
 // Klikkaus: aseta aktiivinen ja fokusoi kenttä
 grid.addEventListener("click",e=>{
   const cell=e.target.closest(".cell");if(!cell)return;
   const i=cells.indexOf(cell);setActive(i);
-  if(isiOS) {
-    iosInput.classList.add("visible");
-    iosInput.focus();
-  }
+  if(isiOS) focusKeyboardiOS();
 });
 
 // ---------- PC / Desktop syöttö ----------
