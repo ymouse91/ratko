@@ -1,260 +1,212 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Ristisanaratkoja – Älykäs hakija</title>
-  <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#0d6efd" />
-  <style>
-    :root{
-      --cell: 52px;
-      --gap: 6px;
-      --accent: #0d6efd;
-      --bg: #f3f4f6;
-      --ink: #0f172a;
-    }
-    *{ box-sizing: border-box; }
-    html,body{ height:100%; }
-    body{
-      margin:0; color:var(--ink); background:var(--bg);
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Arial, sans-serif;
-      display:flex; flex-direction:column; align-items:center; gap:14px; padding:24px;
-    }
-    h1{ margin:0; color:var(--accent); letter-spacing:.3px; }
-    #grid{
-      display:flex; gap:var(--gap); flex-wrap:wrap; justify-content:center;
-      max-width: calc(var(--cell)*15 + var(--gap)*14);
-      user-select:none;
-    }
-    .cell{
-      width:var(--cell); height:var(--cell);
-      display:grid; place-items:center;
-      border:2px solid #cbd5e1; background:#fff; border-radius:8px;
-      font-size:1.6rem; font-weight:600; text-transform:uppercase;
-      transition: .12s border-color, .12s background-color;
-      cursor:pointer;
-    }
-    .cell.filled{ border-color:var(--accent); }
-    .cell.active{ border-color:var(--accent); background:#eaf1ff; }
-    #controls{ display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
-    button{
-      appearance:none; border:none; cursor:pointer;
-      padding:.65rem 1.1rem; border-radius:8px; font-weight:700; color:#fff;
-      background:var(--accent); box-shadow:0 2px 6px rgba(13,110,253,.25);
-    }
-    button:hover{ filter:brightness(.95); }
-    #hint{ font-size:.95rem; opacity:.85; }
-    #results{
-      width:min(680px, 92vw); max-height:60vh; overflow:auto;
-      background:#fff; border-radius:10px; padding:14px 16px;
-      box-shadow:0 6px 18px rgba(0,0,0,.08);
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      white-space: pre-wrap;
-    }
-	.known { color: #0d6efd; font-weight: 700; }
-
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Ristisanaratkoja – mobiili</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0d6efd">
+<style>
+:root{
+  --cell: 52px;
+  --gap: 6px;
+  --accent: #0d6efd;
+  --bg: #f3f4f6;
+  --ink: #0f172a;
+}
+*{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Ubuntu, sans-serif;
+  display:flex; flex-direction:column; align-items:center; gap:16px;
+  padding:max(env(safe-area-inset-top),20px) 16px 60px;
+  touch-action:manipulation;
+}
+h1{ margin:0; color:var(--accent); font-weight:700; }
+#grid{
+  display:flex; flex-wrap:wrap; justify-content:center; gap:var(--gap);
+  max-width:calc(var(--cell)*15 + var(--gap)*14);
+}
+.cell{
+  width:var(--cell); height:var(--cell);
+  display:grid; place-items:center;
+  border:2px solid #ccc; border-radius:8px;
+  background:#fff; font-size:1.6rem; font-weight:700;
+  text-transform:uppercase; color:#000;
+  transition:.15s border-color,.15s background-color;
+  user-select:none; cursor:pointer;
+}
+.cell.active{ border-color:var(--accent); background:#eaf1ff; }
+#buttons{ display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+button{
+  padding:.65rem 1.2rem; font-weight:700;
+  background:var(--accent); color:#fff; border:none; border-radius:8px;
+}
+button:active{ transform:scale(.97); }
+#results{
+  width:min(680px,94vw); max-height:60vh; overflow:auto;
+  background:#fff; border-radius:10px;
+  padding:12px 16px; box-shadow:0 2px 8px rgba(0,0,0,.15);
+  font-family:ui-monospace,Menlo,Consolas,monospace;
+  white-space:pre-wrap;
+}
+.known{ color:var(--accent); font-weight:700; }
+</style>
 </head>
 <body>
-  <h1>Ristisanaratkoja</h1>
+<h1>Ristisanaratkoja</h1>
 
-  <div id="grid" aria-label="15 ruutua"></div>
+<div id="grid"></div>
 
-  <div id="controls">
-    <button id="searchBtn">🔍 Etsi sanat (Enter)</button>
-    <button id="clearBtn">🧹 Tyhjennä (Esc)</button>
-  </div>
+<div id="buttons">
+  <button id="searchBtn">🔍 Etsi (Enter)</button>
+  <button id="clearBtn">🧹 Tyhjennä (Esc)</button>
+</div>
 
-  <div id="hint">
-    Syöttö: Kirjaimet A–Ö → ruutuun ja seuraavaan. Välilyönti → siirry seuraavaan. Piste <code>.</code> → sanan loppu (tarkka haku). Backspace → tyhjennä ja siirry vasemmalle.
-  </div>
+<pre id="results">Ladataan sanalistaa…</pre>
 
-  <pre id="results">Ladataan sanalistaa...</pre>
+<script>
+let words=[];
+fetch("suodatetut.txt").then(r=>r.text()).then(t=>{
+  words=t.split(/\r?\n/).map(w=>w.trim()).filter(Boolean);
+  results.textContent="Valmis! Syötä kirjaimia ja paina Enter.";
+});
 
-  <script>
-  // =============== 1) Lataa sanalista ===============
-  let words = [];
-  const results = document.getElementById('results');
-
-  fetch('suodatetut.txt')
-    .then(r => r.text())
-    .then(t => {
-      // normalisoidaan pieniksi kirjaimiksi
-      words = t.split(/\r?\n/).map(w => w.trim().toLowerCase()).filter(Boolean);
-      results.textContent = 'Valmis! Syötä kirjaimia riville ja paina Enter.';
-    })
-    .catch(()=> results.textContent = 'Virhe: suodatetut.txt ei löytynyt.');
-
-  // =============== 2) Ruutujen luonti ===============
-  const grid = document.getElementById('grid');
-  const CELLS = 15;
-  const cells = [];
-  for (let i=0;i<CELLS;i++){
-    const d = document.createElement('div');
-    d.className = 'cell';
-    d.dataset.index = i;
-    d.setAttribute('role','textbox');
-    d.setAttribute('aria-label', `Ruutu ${i+1}`);
-    grid.appendChild(d);
-    cells.push(d);
-  }
-
-  // =============== 3) Aktiivinen ruutu ===============
-  let active = 0;
-  function setActive(i){
-    if(i<0 || i>=CELLS) return;
-    cells[active]?.classList.remove('active');
-    active = i;
-    cells[active].classList.add('active');
-  }
-  setActive(0);
-  cells.forEach((c,i)=> c.addEventListener('click', ()=> setActive(i)));
-
-  // =============== 4) Näppäinsyöttö ===============
-  document.addEventListener('keydown', (e)=>{
-    const k = e.key;
-
-    if (k.length===1 && /[a-zåäö]/i.test(k)){
-      cells[active].textContent = k.toUpperCase();
-      cells[active].classList.add('filled');
-      setActive(Math.min(active+1, CELLS-1));
-      return;
-    }
-    if (k === ' '){
-      // välilyönti = hyppää seuraavaan ruutuun muuttamatta sisältöä
-      e.preventDefault();
-      setActive(Math.min(active+1, CELLS-1));
-      return;
-    }
-    if (k === '.'){
-      cells[active].textContent = '.';
-      cells[active].classList.add('filled');
-      setActive(Math.min(active+1, CELLS-1));
-      return;
-    }
-    if (k === 'Backspace'){
-      // tyhjennä ja siirry vasemmalle
-      e.preventDefault();
-      cells[active].textContent = '';
-      cells[active].classList.remove('filled');
-      setActive(Math.max(active-1, 0));
-      return;
-    }
-    if (k === 'ArrowRight'){ setActive(Math.min(active+1, CELLS-1)); return; }
-    if (k === 'ArrowLeft'){  setActive(Math.max(active-1, 0)); return; }
-    if (k === 'Enter'){ findMatchesSmart(); return; }
-    if (k === 'Escape'){ clearGrid(); return; }
-  });
-
-  // =============== 5) Tyhjennys ===============
-  function clearGrid(){
-    cells.forEach(c=>{
-      c.textContent = '';
-      c.classList.remove('filled','active');
-    });
-    setActive(0);
-    results.textContent = 'Ruudukko tyhjennetty.';
-  }
-  document.getElementById('clearBtn').addEventListener('click', clearGrid);
-
-  // =============== 6) Älykäs haku ===============
-  // Sääntö:
-  // - Jos rivillä on piste (.) → tarkka ristisanahaku (pituus = pisteen indeksi).
-  // - Muuten Scrabble-haku: käytä tunnettujen kirjainten täsmällisiä välejä
-  //   ja rivin reunoja rajoina (sana ei saa ylittää vasenta/oikeaa reunaa).
-function findMatchesSmart(){
-  const pattern = cells.map(c => {
-    const t = (c.textContent || '').trim().toUpperCase();
-    if (t === '.') return '.';
-    if (t === '')  return '_';
-    return t;
-  });
-
-  const maxLen = pattern.length;
-  const dotIdx = pattern.indexOf('.');
-  const matches = [];
-
-  // ---------------- Tarkka ristisanahaku ----------------
-  if (dotIdx !== -1){
-    const cut = pattern.slice(0, dotIdx);
-    const model = cut.map(ch => ch === '_' ? '.' : ch).join('');
-    const re = new RegExp('^' + model + '$', 'i');
-    const plen = cut.length;
-    for (const w of words){
-      if (w.length === plen && re.test(w)) matches.push([w.toUpperCase(), 0]);
-    }
-  } 
-  // ---------------- Scrabble-haku ----------------
-  else {
-    const known = [];
-    for (let i=0;i<maxLen;i++){
-      const ch = pattern[i];
-      if (/^[A-ZÅÄÖ]$/.test(ch)) known.push([i, ch]);
-    }
-
-    if (known.length === 0){
-      results.textContent = 'Syötä ainakin yksi kirjain.';
-      return;
-    }
-
-    for (const wordOrig of words){
-      const word = wordOrig.toUpperCase();
-      const wlen = word.length;
-      if (wlen > maxLen) continue;
-
-      for (let start=0; start <= maxLen - wlen; start++){
-        let fits = true;
-        for (const [pos, ch] of known){
-          const wi = pos - start;
-          if (wi < 0 || wi >= wlen || word[wi] !== ch){
-            fits = false; break;
-          }
-        }
-        if (fits){
-          matches.push([word, start]);
-          break;
-        }
-      }
-    }
-  }
-
-  if (!matches.length){
-    results.textContent = 'Ei sopivia sanoja.';
-    return;
-  }
-
-  // ---------------- Tulostus: kaikki isot, osumat sinisellä ----------------
-  let html = `<b>${matches.length}</b> sanaa löytyi:<br><br>`;
-  for (const [word, start] of matches){
-    let out = '';
-    for (let i=0; i<word.length; i++){
-      const boardIndex = start + i;
-      const boardCh = pattern[boardIndex];
-      const wCh = word[i];
-      if (boardIndex < maxLen && /^[A-ZÅÄÖ]$/.test(boardCh) && boardCh === wCh){
-        out += `<span class="known">${wCh}</span>`;
-      } else {
-        out += wCh;
-      }
-    }
-    html += out + '<br>';
-  }
-  results.innerHTML = html;
+const grid=document.getElementById("grid");
+const CELLS=15,cells=[];
+for(let i=0;i<CELLS;i++){
+  const d=document.createElement("div");
+  d.className="cell"; d.dataset.index=i;
+  d.addEventListener("click",()=>setActive(i));
+  grid.appendChild(d); cells.push(d);
 }
 
+let active=0;
+function setActive(i){
+  if(i<0||i>=CELLS)return;
+  cells[active]?.classList.remove("active");
+  active=i; cells[active].classList.add("active");
+}
+setActive(0);
 
+// iOS tunnistus
+const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
+// ----- Näppäimistösyöttö (ei-iOS) -----
+if (!isiOS){
+  document.addEventListener("keydown", e=>{
+    const k = e.key;
+    if(k.length===1 && /[a-zåäö]/i.test(k)){
+      cells[active].textContent=k.toUpperCase();
+      setActive(Math.min(active+1, CELLS-1));
+    }
+    else if(k===" "){ e.preventDefault(); setActive(Math.min(active+1, CELLS-1)); }
+    else if(k==="."){ cells[active].textContent="."; setActive(Math.min(active+1, CELLS-1)); }
+    else if(k==="Backspace"){ e.preventDefault(); cells[active].textContent=""; setActive(Math.max(active-1,0)); }
+    else if(k==="ArrowRight") setActive(Math.min(active+1, CELLS-1));
+    else if(k==="ArrowLeft")  setActive(Math.max(active-1,0));
+    else if(k==="Enter") findMatchesSmart();
+    else if(k==="Escape") clearGrid();
+  });
+}
 
+// ----- iOS syöttö: piilotettu kenttä -----
+if (isiOS){
+  const hiddenInput=document.createElement("input");
+  hiddenInput.type="text";
+  hiddenInput.inputMode="text";
+  hiddenInput.style.position="absolute";
+  hiddenInput.style.opacity="0";
+  hiddenInput.autocapitalize="characters";
+  hiddenInput.autocorrect="off";
+  document.body.appendChild(hiddenInput);
 
-  document.getElementById('searchBtn').addEventListener('click', findMatchesSmart);
+  // avaa näppäimistö kun gridia napautetaan
+  grid.addEventListener("touchstart",()=>{ hiddenInput.focus(); },{passive:true});
+  grid.addEventListener("click",()=>{ hiddenInput.focus(); });
 
-  // =============== 7) SW-rekisteröinti (PWA) ===============
-  if ('serviceWorker' in navigator){
-    window.addEventListener('load', ()=>{
-      navigator.serviceWorker.register('service-worker.js').catch(()=>{});
-    });
+  hiddenInput.addEventListener("input",e=>{
+    const val=e.target.value.toUpperCase();
+    if(val.length){
+      const k=val[val.length-1];
+      if(/[A-ZÅÄÖ]/.test(k)){
+        cells[active].textContent=k;
+        setActive(Math.min(active+1,CELLS-1));
+      }else if(k==="."){
+        cells[active].textContent=".";
+        setActive(Math.min(active+1,CELLS-1));
+      }else if(k===" "){
+        setActive(Math.min(active+1,CELLS-1));
+      }
+      e.target.value="";
+    }
+  });
+}
+
+// ----- Toiminnot -----
+function clearGrid(){
+  cells.forEach(c=>c.textContent="");
+  setActive(0);
+  results.textContent="Ruudukko tyhjennetty.";
+}
+document.getElementById("clearBtn").addEventListener("click",clearGrid);
+
+// ----- Haku -----
+function findMatchesSmart(){
+  const pattern=cells.map(c=>{
+    const t=(c.textContent||"").trim().toUpperCase();
+    if(t===".")return"."; if(t==="")return"_"; return t;
+  });
+  const maxLen=pattern.length,dotIdx=pattern.indexOf("."),matches=[];
+
+  if(dotIdx!==-1){
+    const cut=pattern.slice(0,dotIdx);
+    const model=cut.map(ch=>ch==="_"?".":ch).join("");
+    const re=new RegExp("^"+model+"$","i");
+    const plen=cut.length;
+    for(const w of words){ if(w.length===plen && re.test(w)) matches.push([w.toUpperCase(),0]); }
+  }else{
+    const known=[];
+    for(let i=0;i<maxLen;i++){ const ch=pattern[i]; if(/^[A-ZÅÄÖ]$/.test(ch)) known.push([i,ch]); }
+    if(!known.length){ results.textContent="Syötä ainakin yksi kirjain."; return; }
+
+    for(const wOrig of words){
+      const w=wOrig.toUpperCase(); const wlen=w.length;
+      if(wlen>maxLen)continue;
+      for(let start=0;start<=maxLen-wlen;start++){
+        let fits=true;
+        for(const [pos,ch] of known){
+          const wi=pos-start;
+          if(wi<0||wi>=wlen||w[wi]!==ch){ fits=false; break; }
+        }
+        if(fits){ matches.push([w,start]); break; }
+      }
+    }
   }
-  </script>
+
+  if(!matches.length){ results.textContent="Ei sopivia sanoja."; return; }
+
+  let html=`<b>${matches.length}</b> sanaa löytyi:<br><br>`;
+  for(const [word,start] of matches){
+    let out="";
+    for(let i=0;i<word.length;i++){
+      const boardIndex=start+i;
+      const boardCh=pattern[boardIndex];
+      const wCh=word[i];
+      if(boardIndex<maxLen && /^[A-ZÅÄÖ]$/.test(boardCh) && boardCh===wCh)
+        out+=`<span class="known">${wCh}</span>`;
+      else out+=wCh;
+    }
+    html+=out+"<br>";
+  }
+  results.innerHTML=html;
+}
+document.getElementById("searchBtn").addEventListener("click",findMatchesSmart);
+
+// ----- PWA SW -----
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>navigator.serviceWorker.register("service-worker.js").catch(()=>{}));
+}
+</script>
 </body>
 </html>
