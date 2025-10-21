@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+
 <title>Ristisanaratkoja</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0d6efd">
@@ -44,11 +47,13 @@ button:active{transform:scale(.97);}
   white-space:pre-wrap;
 }
 .known{color:var(--accent);font-weight:700;}
+/* 3) Piiloinput varmemmin offscreeniin */
 #iosInput{
-  position:relative;
-  width:1px;height:1px;opacity:0;
-  border:none;background:transparent;
+  position:fixed; left:-9999px; top:0;
+  width:1px; height:1px; opacity:0;
+  border:none; background:transparent;
 }
+
 </style>
 </head>
 <body>
@@ -58,13 +63,27 @@ button:active{transform:scale(.97);}
 <input id="iosInput" type="text" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false">
 
 <div id="buttons">
-  <button id="searchBtn">🔍 Etsi</button>
   <button id="clearBtn">🧹 Tyhjennä</button>
+  <button id="searchBtn">🔍 Etsi</button>
+
 </div>
 
 <pre id="results">Ladataan sanalistaa…</pre>
 
 <script>
+const results = document.getElementById('results');           // 1) HAE ELEMENTTI
+
+const isiOS = (
+  /iPad|iPhone|iPod/.test(navigator.platform) ||              // 2) KORJAA TUNNISTUS
+  (navigator.userAgent.includes('Mac') && 'ontouchend' in document)
+);
+
+const iosInput = document.getElementById("iosInput");
+
+// (valinnainen) tai käytä laitetunnistusta:
+// const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+
 let words=[];
 fetch("suodatetut.txt").then(r=>r.text()).then(t=>{
   words=t.split(/\r?\n/).map(w=>w.trim()).filter(Boolean);
@@ -84,8 +103,7 @@ function setActive(i){
 }
 setActive(0);
 
-const isiOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
-const iosInput=document.getElementById("iosInput");
+
 
 // 🔹 Klikkaus: aseta aktiivinen ja fokusoi kenttä
 grid.addEventListener("click",e=>{
