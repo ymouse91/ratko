@@ -1,6 +1,7 @@
 self.addEventListener('install', e=>{
-  e.waitUntil(caches.open('ristisanaratkoja-v5').then(c=>c.addAll([
-    './','./index.html',
+  e.waitUntil(caches.open('ristisanaratkoja-v6').then(c=>c.addAll([
+    './',
+    './index.html',
     './manifest.json',
     './suodatetut.txt',
     './icon-192.png',
