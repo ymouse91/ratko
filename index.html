@@ -87,7 +87,7 @@ const iosInput = document.getElementById("iosInput");
 let words=[];
 fetch("suodatetut.txt").then(r=>r.text()).then(t=>{
   words=t.split(/\r?\n/).map(w=>w.trim()).filter(Boolean);
-  results.textContent="Versio 1.1 - Valmis! Napauta ruutua ja kirjoita.";
+  results.textContent="Versio 1.2 - Valmis! Napauta ruutua ja kirjoita.";
 });
 
 const CELLS=15,grid=document.getElementById("grid"),cells=[];
@@ -204,6 +204,9 @@ function findMatchesSmart(){
     html+=out+"<br>";
   }
   results.innerHTML=html;
+}
+  if('serviceWorker'in navigator){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js'));
 }
 </script>
 </body>
